@@ -1,5 +1,4 @@
 <?php
-
 require_once "db.php";
 
 $keyword = trim($_GET['keyword'] ?? '');
@@ -9,70 +8,34 @@ $location = trim($_GET['location'] ?? '');
 $date = trim($_GET['date'] ?? '');
 
 $sql = "SELECT * FROM items
-        WHERE status IN ('Lost', 'Found')";
-
-$params = [];
-$types = "";
-
-if ($keyword !== '') {
-    $sql .= " AND (item_name LIKE ? OR description LIKE ?)";
-
-    $term = "%" . $keyword . "%";
-
-    $params[] = $term;
-    $params[] = $term;
-
-    $types .= "ss";
-}
-
-if ($category !== '') {
-    $sql .= " AND category = ?";
-    $params[] = $category;
-    $types .= "s";
-}
-
-if ($colour !== '') {
-    $sql .= " AND colour = ?";
-    $params[] = $colour;
-    $types .= "s";
-}
-
-if ($location !== '') {
-    $sql .= " AND location LIKE ?";
-    $params[] = "%" . $location . "%";
-    $types .= "s";
-}
-
-if ($date !== '') {
-    $sql .= " AND item_date = ?";
-    $params[] = $date;
-    $types .= "s";
-}
-
-$sql .= " ORDER BY created_at DESC";
+        WHERE status IN ('Lost', 'Found')
+        AND (
+            item_name LIKE CONCAT('%', ?, '%')
+            OR description LIKE CONCAT('%', ?, '%')
+        )
+        AND (? = '' OR category = ?)
+        AND (? = '' OR colour = ?)
+        AND (? = '' OR location = ?)
+        AND (? = '' OR item_date = ?)
+        ORDER BY created_at DESC";
 
 $stmt = $conn->prepare($sql);
 
-if (!$stmt) {
-    die("Unable to prepare search query.");
-}
-
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
-}
+$stmt->bind_param(
+    "ssssssssss",
+    $keyword, $keyword,
+    $category, $category,
+    $colour, $colour,
+    $location, $location,
+    $date, $date
+);
 
 $stmt->execute();
-
 $result = $stmt->get_result();
 
 function e($value) {
-    return htmlspecialchars(
-        (string)($value ?? ''),
-        ENT_QUOTES,
-        'UTF-8'
-    );
+    return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -80,9 +43,7 @@ function e($value) {
 
 <head>
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Search Items | LostLink</title>
 
@@ -91,111 +52,134 @@ function e($value) {
 
 <body>
 
-<header>
-    <h1>LostLink</h1>
-    <a href="index.php">Home</a>
+<header class="navbar">
+    <a href="index.php" class="logo">LostLink</a>
+
+    <nav>
+        <a href="index.php">Home</a>
+        <a href="about.php">About</a>
+        <a href="search.php">Search Items</a>
+    </nav>
 </header>
 
 <main>
 
-    <h2>Search Lost & Found Items</h2>
+    <section>
+        <h2>Search Lost and Found Items</h2>
 
-    <form action="search.php" method="GET">
+        <div class="feature-card">
 
-        <input
-            type="text"
-            name="keyword"
-            placeholder="Search item name"
-            value="<?= e($keyword) ?>"
-        >
+            <form method="GET" action="search.php">
 
-        <select name="category">
-            <option value="">All Categories</option>
-            <option value="Electronics">Electronics</option>
-            <option value="Books">Books</option>
-            <option value="ID Cards">ID Cards</option>
-            <option value="Accessories">Accessories</option>
-            <option value="Other">Other</option>
-        </select>
+                <label>Keyword</label>
+                <input type="text" name="keyword"
+                       value="<?= e($keyword) ?>"
+                       placeholder="Enter item name">
 
-        <select name="colour">
-            <option value="">All Colours</option>
-            <option value="Black">Black</option>
-            <option value="Blue">Blue</option>
-            <option value="White">White</option>
-            <option value="Red">Red</option>
-            <option value="Green">Green</option>
-        </select>
+                <br><br>
 
-        <input
-            type="text"
-            name="location"
-            placeholder="Enter location"
-            value="<?= e($location) ?>"
-        >
+                <label>Category</label>
+                <input type="text" name="category"
+                       value="<?= e($category) ?>"
+                       placeholder="Enter category">
 
-        <input
-            type="date"
-            name="date"
-            value="<?= e($date) ?>"
-        >
+                <br><br>
 
-        <button type="submit">Search</button>
+                <label>Colour</label>
+                <input type="text" name="colour"
+                       value="<?= e($colour) ?>"
+                       placeholder="Enter colour">
 
-    </form>
+                <br><br>
 
-    <h2>Search Results</h2>
+                <label>Location</label>
+                <input type="text" name="location"
+                       value="<?= e($location) ?>"
+                       placeholder="Enter location">
 
-    <p><?= $result->num_rows ?> item(s) found.</p>
+                <br><br>
 
-    <?php if ($result->num_rows > 0): ?>
+                <label>Date</label>
+                <input type="date" name="date"
+                       value="<?= e($date) ?>">
 
-        <?php while ($item = $result->fetch_assoc()): ?>
+                <br><br>
 
-            <div class="item-card">
+                <button type="submit" class="nav-button">
+                    Search
+                </button>
 
-                <h3><?= e($item['item_name']) ?></h3>
+                <a href="search.php">Clear</a>
 
-                <p>
-                    <strong>Category:</strong>
-                    <?= e($item['category']) ?>
-                </p>
+            </form>
 
-                <p>
-                    <strong>Colour:</strong>
-                    <?= e($item['colour']) ?>
-                </p>
+        </div>
+    </section>
 
-                <p>
-                    <strong>Location:</strong>
-                    <?= e($item['location']) ?>
-                </p>
+    <section>
 
-                <p>
-                    <strong>Date:</strong>
-                    <?= e($item['item_date']) ?>
-                </p>
+        <h2>Search Results</h2>
 
-                <p>
-                    <strong>Status:</strong>
-                    <?= e($item['status']) ?>
-                </p>
+        <?php if ($result->num_rows > 0): ?>
 
-                <p><?= e($item['description']) ?></p>
+            <?php while ($item = $result->fetch_assoc()): ?>
 
-                <a href="matching.php?id=<?= (int)$item['id'] ?>">
-                    Check Possible Matches
-                </a>
+                <div class="feature-card">
 
-            </div>
+                    <h3><?= e($item['item_name']) ?></h3>
 
-        <?php endwhile; ?>
+                    <p>
+                        <strong>Category:</strong>
+                        <?= e($item['category']) ?>
+                    </p>
 
-    <?php else: ?>
+                    <p>
+                        <strong>Colour:</strong>
+                        <?= e($item['colour']) ?>
+                    </p>
 
-        <p>No items found. Try different search filters.</p>
+                    <p>
+                        <strong>Location:</strong>
+                        <?= e($item['location']) ?>
+                    </p>
 
-    <?php endif; ?>
+                    <p>
+                        <strong>Date:</strong>
+                        <?= e($item['item_date']) ?>
+                    </p>
+
+                    <p>
+                        <strong>Description:</strong>
+                        <?= e($item['description']) ?>
+                    </p>
+
+                    <p>
+                        <strong>Status:</strong>
+                        <?= e($item['status']) ?>
+                    </p>
+
+                    <a href="item.php?id=<?= (int)$item['id'] ?>"
+                       class="nav-button">
+                        View Item Details
+                    </a>
+
+                    <br><br>
+
+                    <a href="matching.php?id=<?= (int)$item['id'] ?>">
+                        Check Possible Matches
+                    </a>
+
+                </div>
+
+            <?php endwhile; ?>
+
+        <?php else: ?>
+
+            <p>No matching items found.</p>
+
+        <?php endif; ?>
+
+    </section>
 
 </main>
 
@@ -203,8 +187,6 @@ function e($value) {
 </html>
 
 <?php
-
 $stmt->close();
 $conn->close();
-
 ?>
