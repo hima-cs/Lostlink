@@ -55,3 +55,17 @@ VALUES
     'College identity card',
     'Found'
 );
+-- Claims Table
+
+CREATE TABLE IF NOT EXISTS claims (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_id INT NOT NULL,
+    claimant_name VARCHAR(150) NOT NULL,
+    contact VARCHAR(20) NOT NULL,
+    reason TEXT NOT NULL,
+    claim_status ENUM('Pending', 'Approved', 'Rejected')
+        DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (item_id) REFERENCES items(id)
+);
